@@ -7,7 +7,7 @@
 -- under the terms of the MIT license. See LICENSE for details.
 --
 
-local flux = { _version = "0.1.5" }
+local flux = { _version = "0.1.6" }
 flux.__index = flux
 
 flux.tweens = {}
@@ -80,6 +80,9 @@ tween.ease  = makesetter("_ease",
 tween.delay = makesetter("_delay",
                          function(x) return type(x) == "number" end,
                          "bad delay time; expected number")
+tween.postdelay = makesetter("_postDelay",
+                         function(x) return type(x) == "number" end,
+                         "bad delay time; expected number")
 tween.onstart     = makefsetter("_onstart")
 tween.onupdate    = makefsetter("_onupdate")
 tween.oncomplete  = makefsetter("_oncomplete")
@@ -91,6 +94,7 @@ function tween.new(obj, time, vars)
   self.rate = time > 0 and 1 / time or 0
   self.progress = time > 0 and 0 or 1
   self._delay = 0
+  self._postDelay = 0 -- delay oncomplete after tween
   self._ease = "quadout"
   self.vars = {}
   for k, v in pairs(vars) do
@@ -166,8 +170,13 @@ function flux:update(deltatime)
       end
       if t._onupdate then t._onupdate() end
       if p >= 1 then
-        flux.remove(self, i)
-        if t._oncomplete then t._oncomplete() end
+        if t._postDelay > 0 then
+          t._postDelay = t._postDelay - deltatime
+        end
+        if t._postDelay <= 0 then
+          flux.remove(self, i)
+          if t._oncomplete then t._oncomplete() end
+        end
       end
     end
   end
